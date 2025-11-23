@@ -33,11 +33,12 @@ char* egos_binaries[] = {"./egos.bin",
                          "./images/Bohr.bmp" /* for the video demo app */};
 #define EGOS_BIN_NUM ((sizeof(egos_binaries) / sizeof(char*)))
 
-char bin_dir[256] = "./   6 ../   0 ";
+char bin_dir[256]      = "./   6 ../   0 ";
+char home_yunhao[512]  = "./   2 ../   1 README   5 ";
 char* contents[]  = {
     "./   0 ../   0 home/   1 bin/   6 ",
     "./   1 ../   0 yunhao/   2 rvr/   3 yacqub/   4 ",
-    "./   2 ../   1 README   5 ",
+    home_yunhao,   // inode 2: /home/yunhao (now writable)
     "./   3 ../   1 ",
     "./   4 ../   1 ",
     "With only 2000 lines of code, egos-2000 implements boot loader, SD card "
@@ -47,6 +48,7 @@ char* contents[]  = {
      "Moreover, the EGOS book (https://egos.fun) contains 9 course projects.",
     bin_dir};
 #define BIN_DIR_INODE ((sizeof(contents) / sizeof(char*)) - 1)
+
 
 char inode[SIZE_2MB], tmp[512];
 char vexriscv[SIZE_2MB * 2], exec[SIZE_2MB], fs[SIZE_2MB];
@@ -77,14 +79,14 @@ int ramwrite(inode_intf bs, uint ino, uint offset, block_t* block) {
 }
 
 int main() {
-    /* Write the kernel and system server binaries into exec[]. */
+    /* 1. Kernel + system server binaries into exec[]. */
     printf("[INFO] Load %ld kernel binary files\n", EGOS_BIN_NUM);
     for (uint i = 0; i < EGOS_BIN_NUM; i++) {
         int sz = load_file(egos_binaries[i], exec + i * EGOS_BIN_MAX_NBYTE);
         printf("[INFO] Load %s: %d bytes\n", egos_binaries[i], sz);
     }
 
-    /* Initialize the file system using the fs[] buffer as a ramdisk. */
+    /* 2. Init FS in fs[] as ramdisk. */
     printf("MKFS is using *%s*\n", FILESYS == 0 ? "mydisk" : "treedisk");
     struct inode_store ramdisk = (struct inode_store){.read    = ramread,
                                                       .write   = ramwrite,
@@ -95,14 +97,14 @@ int main() {
     inode_intf filesys =
         (FILESYS == 0) ? mydisk_init(&ramdisk, 0) : treedisk_init(&ramdisk, 0);
 
-    /* Write to inode 0..BIN_DIR_INODE-1 in the file system. */
+    /* 3. Inodes 0..BIN_DIR_INODE-1 (dirs + README). */
     for (uint ino = 0; ino < BIN_DIR_INODE; ino++) {
         printf("[INFO] Load ino=%d, %ld bytes\n", ino, strlen(contents[ino]));
         strncpy(inode, contents[ino], BLOCK_SIZE);
         filesys->write(filesys, ino, 0, (void*)inode);
     }
 
-    /* Write to one inode for each user application. */
+    /* 4. User apps into /bin. */
     uint app_ino = BIN_DIR_INODE + 1;
     DIR* dp      = opendir("../build/release/user");
     assert(dp != NULL);
@@ -110,15 +112,13 @@ int main() {
         if (strstr(ep->d_name, ".elf")) {
             sprintf(tmp, "../build/release/user/%s", ep->d_name);
             int file_size = load_file(tmp, inode);
-            printf("[INFO] Load ino=%d, %s: %d bytes\n", app_ino, ep->d_name,
-                   file_size);
+            printf("[INFO] Load ino=%d, %s: %d bytes\n",
+                   app_ino, ep->d_name, file_size);
 
-            /* Write the ELF format application binary into inode app_ino. */
-            for (uint b = 0; b * BLOCK_SIZE < file_size; b++)
+            for (uint b = 0; b * BLOCK_SIZE < (uint)file_size; b++)
                 filesys->write(filesys, app_ino, b,
                                (void*)(inode + b * BLOCK_SIZE));
 
-            /* Add the corresponding file entry into the /bin directory. */
             ep->d_name[strlen(ep->d_name) - 4] = 0;
             sprintf(tmp, "%s%4d ", ep->d_name, app_ino++);
             strcat(bin_dir, tmp);
@@ -127,24 +127,52 @@ int main() {
     filesys->write(filesys, BIN_DIR_INODE, 0, (void*)bin_dir);
     printf("[INFO] Load ino=%ld, %s\n", BIN_DIR_INODE, bin_dir);
 
-    /* Generate the disk image file. */
+    /* 5. NOW add test.txt and big.txt into /home/yunhao (inode 2). */
+    int test_ino  = app_ino++;
+    int test_size = load_file("test.txt", inode);
+    printf("[INFO] Load ino=%d, test.txt: %d bytes\n", test_ino, test_size);
+    for (uint b = 0; b * BLOCK_SIZE < (uint)test_size; b++) {
+        filesys->write(filesys, test_ino, b,
+                       (void*)(inode + b * BLOCK_SIZE));
+    }
+
+    char home_entry[64];
+    snprintf(home_entry, sizeof(home_entry), "test.txt   %d ", test_ino);
+    strncat(home_yunhao, home_entry,
+            sizeof(home_yunhao) - strlen(home_yunhao) - 1);
+
+    int big_ino  = app_ino++;
+    int big_size = load_file("big.txt", inode);
+    printf("[INFO] Load ino=%d, big.txt: %d bytes\n", big_ino, big_size);
+    for (uint b = 0; b * BLOCK_SIZE < (uint)big_size; b++) {
+        filesys->write(filesys, big_ino, b,
+                       (void*)(inode + b * BLOCK_SIZE));
+    }
+
+    snprintf(home_entry, sizeof(home_entry), "big.txt   %d ", big_ino);
+    strncat(home_yunhao, home_entry,
+            sizeof(home_yunhao) - strlen(home_yunhao) - 1);
+
+    memset(inode, 0, BLOCK_SIZE);
+    strncpy(inode, home_yunhao, BLOCK_SIZE);
+    filesys->write(filesys, 2, 0, (void*)inode);
+
+    /* 6. Disk + ROM images exactly like your original code. */
     int fd  = open("disk.img", O_CREAT | O_WRONLY, 0666);
     int sz1 = write(fd, exec, SIZE_2MB);
-    sz1 += write(fd, fs, SIZE_2MB);
+    sz1    += write(fd, fs,   SIZE_2MB);
     close(fd);
 
-    /* Generate the ROM image files. */
     fd = open("fpgaROM.bin", O_CREAT | O_WRONLY, 0666);
     assert(load_file(CPU_BIN_FILE, vexriscv) < SIZE_2MB * 2);
     int sz2 = write(fd, vexriscv, SIZE_2MB * 2);
-    sz2 += write(fd, exec, SIZE_2MB);
-    sz2 += write(fd, fs, SIZE_2MB);
+    sz2    += write(fd, exec,    SIZE_2MB);
+    sz2    += write(fd, fs,      SIZE_2MB);
     close(fd);
 
     fd      = open("qemuROM.bin", O_CREAT | O_WRONLY, 0666);
     int sz3 = write(fd, exec, SIZE_2MB);
     for (uint i = 0; i < 15; i++) sz3 += write(fd, fs, SIZE_2MB);
-    /* Simply pad the image to 32MB which is required by QEMU. */
     close(fd);
 
     assert(sz1 == SIZE_2MB * 2 && sz2 == SIZE_2MB * 4 && sz3 == SIZE_2MB * 16);
