@@ -41,12 +41,38 @@ char* contents[]  = {
     home_yunhao,   // inode 2: /home/yunhao (now writable)
     "./   3 ../   1 ",
     "./   4 ../   1 ",
-    "With only 2000 lines of code, egos-2000 implements boot loader, SD card "
-     "driver, tty driver, virtual memory with page tables, interrupt and "
-     "exception handling, preemptive scheduler, system call, file system, "
-     "shell, an Ethernet/UDP demo, several user commands, and the mkfs tool. "
-     "Moreover, the EGOS book (https://egos.fun) contains 9 course projects.",
-    bin_dir};
+    "hello world\n"
+"HELLO WORLD\n"
+"hello   spaced   world\n"
+"grep this line\n"
+"nothing to see here\n"
+"12345\n"
+"symbols !@#$%^&*()[]{}<>:;'/?,.~`+-=|\\\n"
+"CaseSensitive caseSensitive CASESENSITIVE\n"
+"line with grepword insidegrepwordtoken\n"
+"   leading spaces\n"
+"trailing spaces   \n"
+"\n"
+"empty-line-above\n"
+"two\nlines\nin\none\nentry\n"
+"very very very very very very very very very very very very long line for testing wc -l and grep command reliability with medium sized line\n"
+"grep at start\n"
+"at end grep\n"
+"grep\n"
+"multiple grep grep occurrences grep\n"
+"wc-l should count accurately here\n"
+"SUPER_LONG_LINE_START "
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+" repeated-segment-to-cross-512-byte-threshold-end\n",bin_dir};
 #define BIN_DIR_INODE ((sizeof(contents) / sizeof(char*)) - 1)
 
 
