@@ -1,3 +1,11 @@
+## Author
+
+**Jazl Anwar Mundam Valappil**
+- GitHub: [@jazpeak](https://github.com/jazpeak)
+- LinkedIn: [Jazl Anwar](https://www.linkedin.com/in/jazlanwar/)
+- Email: jazl24283@iiitd.ac.in
+- Number: +91 8129441888
+- 
 # SimpleOS: MLFQ Implementation
 > A custom Multi-Level Feedback Queue scheduler and Unix-like shell tools built natively for the RISC-V architecture.
 
